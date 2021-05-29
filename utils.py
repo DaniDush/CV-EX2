@@ -105,7 +105,8 @@ def eight_point_algorithm(x1, x2, normalize):
 def constraint_matrix(x1, x2):
     npts = x1.shape[1]
     # stack column by column
-    A = np.c_[x2[0] * x1[0], x2[0] * x1[1], x2[0], x2[1] * x1[0], x2[1] * x1[1], x2[1], x1[0], x1[1], np.ones((npts, 1))]
+    A = np.c_[
+        x2[0] * x1[0], x2[0] * x1[1], x2[0], x2[1] * x1[0], x2[1] * x1[1], x2[1], x1[0], x1[1], np.ones((npts, 1))]
     return A
 
 
@@ -152,3 +153,16 @@ def normalize2dpts(pts):
     newpts = np.dot(T, pts)
 
     return newpts, T
+
+
+def calc_errors(disparity_matrix, gt):
+    flat_d = disparity_matrix.flatten()
+    flat_gt = gt[:, :, 0].flatten()/3
+    errors = np.asarray([abs(e1 - e2) for e1, e2 in zip(flat_gt, flat_d)])
+    avg_error = np.mean(errors)
+    med_error = np.median(errors)
+    print(np.where(errors > 0.5))
+    bad_05 = ((np.where(errors > 0.5)[0].shape[0]) / errors.shape[0]) * 100
+    bad_4 = ((np.where(errors > 4)[0].shape[0]) / errors.shape[0]) * 100
+
+    return avg_error, med_error, bad_05, bad_4
