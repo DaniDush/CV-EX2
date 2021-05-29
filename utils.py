@@ -161,7 +161,6 @@ def calc_errors(disparity_matrix, gt):
     errors = np.asarray([abs(e1 - e2) for e1, e2 in zip(flat_gt, flat_d)])
     avg_error = np.mean(errors)
     med_error = np.median(errors)
-    print(np.where(errors > 0.5))
     bad_05 = ((np.where(errors > 0.5)[0].shape[0]) / errors.shape[0]) * 100
     bad_4 = ((np.where(errors > 4)[0].shape[0]) / errors.shape[0]) * 100
 

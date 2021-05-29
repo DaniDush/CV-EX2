@@ -9,8 +9,12 @@ paths = [['data/Q2/Art/im_left.png', 'data/Q2/Art/im_right.png', 'data/Q2/Art/di
          ['data/Q2/Dolls/im_left.png', 'data/Q2/Dolls/im_right.png', 'data/Q2/Dolls/disp_left.png'],
          ['data/Q2/Moebius/view1.png', 'data/Q2/Moebius/view5.png', 'data/Q2/Moebius/disp1.png']]
 
+DISPARITY_LIMIT = 80
 MODE = ['SSD', 'NCC']
 SKIP_COST = 0
+CEND = '\33[0m'
+CRED = '\33[31m'
+CGREEN = '\33[32m'
 
 
 def NCC(image, temp):
@@ -72,6 +76,7 @@ def get_optimal_line(disparity, cost_matrix, row):
 if __name__ == '__main__':
     for path in paths:
         for m in MODE:
+            compare = NCC if MODE == 'NCC' else SSD
             for k in kernel_sizes:
                 img_left = cv2.imread(path[0])
                 img_right = cv2.imread(path[1])
@@ -83,7 +88,6 @@ if __name__ == '__main__':
                                       mode='mean')
                 disparity_matrix = np.zeros((h, w))  # where all disparities will be saved
 
-                compare = NCC if MODE == 'NCC' else SSD
                 SKIP_COST = 0.1 if MODE == 'NCC' else 30000
                 from time import time
 
@@ -98,7 +102,6 @@ if __name__ == '__main__':
                     # # iterate trough matching rows and calculate their costs
                     for left_col in range(half_k, w + half_k):
                         template = padded_left[row - half_k: row + half_k + 1, left_col - half_k: left_col + half_k + 1]
-                        # cost_matrix[left_col-half_k, :] = compare(image=strip, temp=template)
                         costs = compare(image=strip, temp=template)
                         disparity_matrix[row - half_k, left_col - half_k] = abs(left_col - half_k - np.argmin(costs))
                         cost_matrix[left_col - half_k, :] = costs
@@ -108,30 +111,18 @@ if __name__ == '__main__':
 
                     # print(f"Time = {time() - start_time}, Row = {row - half_k}")
 
-                # improve result by copy from left pixel
-                # for i in range(0, h):
-                #     for j in range(1, w):
-                #         if disparity_matrix[i, j] == 0:  # if occluded pixel, copy from left pixel
-                #             disparity_matrix[i, j] = disparity_matrix[i, j - 1]
-
-                occluded_inds = np.where(disparity_matrix > 130)
+                occluded_inds = np.where(disparity_matrix > DISPARITY_LIMIT)
                 disparity_matrix[occluded_inds] = -1
                 filter_s = 2
                 # Improve Result by Occlusion Filling
                 for i in range(filter_s, h - filter_s - 1):
                     for j in range(filter_s, w - filter_s - 1):
-                        if disparity_matrix[i, j] == -1:  # if occulded pixel, copy from left pixel
+                        if disparity_matrix[i, j] == -1:  # if occluded pixel, copy from left pixel
                             good_vals = disparity_matrix[i - filter_s:i + filter_s + 1, j - filter_s:j + filter_s + 1]
                             good_inds = np.where(good_vals != -1)
                             disparity_matrix[i, j] = np.median(good_vals[good_inds])
 
                 disparity_matrix[disparity_matrix == -1] = 0
-
-                # max_val = np.max(disparity_matrix)
-                # min_val = np.min(disparity_matrix)
-                # for i in range(disparity_matrix.shape[0]):
-                #     for j in range(disparity_matrix.shape[1]):
-                #         disparity_matrix[i, j] = int(255 / (max_val - min_val) * (disparity_matrix[i, j] - max_val) + 255)
 
                 img = Image.fromarray(disparity_matrix).convert('L')
                 img.show()
@@ -141,10 +132,9 @@ if __name__ == '__main__':
                 file_name = path[0].split('/')[2]
                 img_name = file_name + '_' + m + '_kernel' + str(k)
                 img.save('Q2_results/' + img_name, "JPEG")
-                print(disparity_matrix)
 
                 avg_error, med_error, bad_05, bad_4 = calc_errors(disparity_matrix, gt_array)
                 # print distances table
-                print(f"Image = {file_name}, Kernel size = {k}, Cost function = {m}")
+                print(f"{CRED}Image = {file_name}, Kernel size = {k}x{k}, Cost function = {m} : {CEND}")
                 print(tabulate([['AvgErr', avg_error], ['MedErr', med_error],
-                                ['Bad05', bad_05], ['Bad4', bad_4]], headers=['Error']))
+                                ['Bad05', bad_05], ['Bad4', bad_4]], headers=['Distance metric', 'Error']))
