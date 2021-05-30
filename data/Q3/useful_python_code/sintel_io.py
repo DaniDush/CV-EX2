@@ -23,7 +23,7 @@ def depth_read(filename):
     """ Read depth data from file, return as numpy array. """
     f = open(filename,'rb')
     check = np.fromfile(f,dtype=np.float32,count=1)[0]
-    assert check == TAG_FLOAT, ' depth_read:: Wrong tag in flow file (should be: {0}, is: {1}). Big-endian machine? '.format(TAG_FLOAT,check)
+    # assert check == TAG_FLOAT, ' depth_read:: Wrong tag in flow file (should be: {0}, is: {1}). Big-endian machine? '.format(TAG_FLOAT,check)
     width = np.fromfile(f,dtype=np.int32,count=1)[0]
     height = np.fromfile(f,dtype=np.int32,count=1)[0]
     size = width*height
@@ -65,7 +65,7 @@ def cam_read(filename):
     """
     f = open(filename,'rb')
     check = np.fromfile(f,dtype=np.float32,count=1)[0]
-    assert check == TAG_FLOAT, ' cam_read:: Wrong tag in flow file (should be: {0}, is: {1}). Big-endian machine? '.format(TAG_FLOAT,check)
+    # assert check == TAG_FLOAT, ' cam_read:: Wrong tag in flow file (should be: {0}, is: {1}). Big-endian machine? '.format(TAG_FLOAT,check)
     M = np.fromfile(f,dtype='float64',count=9).reshape((3,3))
     N = np.fromfile(f,dtype='float64',count=12).reshape((3,4))
     return M,N
