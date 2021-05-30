@@ -17,18 +17,18 @@ CRED = '\33[31m'
 CGREEN = '\33[32m'
 
 
-def NCC(image, temp):
-    """ normalized cross-correlation """
-    # Faster, will return ncc of template with each block
-    return -cv2.matchTemplate(image, temp, cv2.TM_CCORR_NORMED).squeeze() + 1
+def compare(image, temp, cost_function):
+    if cost_function == 'NCC':
+        """ normalized cross-correlation """
+        # Faster, will return ncc of template with each block
+        return -cv2.matchTemplate(image, temp, cv2.TM_CCORR_NORMED).squeeze() + 1
 
-
-def SSD(image, temp):
-    """ Sum-Square-Differences """
-    # # iterate over strip templates and compute ssd
-    # ssd = [((temp - image[:, r-half_k:r+half_k+1]) ** 2).sum() for r in range(half_k, img_left.shape[1]-half_k)]
-    # Faster,
-    return cv2.matchTemplate(image, temp, cv2.TM_SQDIFF).squeeze()
+    else:
+        """ Sum-Square-Differences """
+        # # iterate over strip templates and compute ssd
+        # ssd = [((temp - image[:, r-half_k:r+half_k+1]) ** 2).sum() for r in range(half_k, img_left.shape[1]-half_k)]
+        # Faster,
+        return cv2.matchTemplate(image, temp, cv2.TM_SQDIFF).squeeze()
 
 
 def get_optimal_line(disparity, cost_matrix, row):
@@ -76,7 +76,7 @@ def get_optimal_line(disparity, cost_matrix, row):
 if __name__ == '__main__':
     for path in paths:
         for m in MODE:
-            compare = NCC if MODE == 'NCC' else SSD
+            cost_function = m
             for k in kernel_sizes:
                 img_left = cv2.imread(path[0])
                 img_right = cv2.imread(path[1])
@@ -88,7 +88,7 @@ if __name__ == '__main__':
                                       mode='mean')
                 disparity_matrix = np.zeros((h, w))  # where all disparities will be saved
 
-                SKIP_COST = 0.1 if MODE == 'NCC' else 30000
+                SKIP_COST = 0.1 if MODE == 'NCC' else 30000     # for dynamic programming
                 from time import time
 
                 cost_matrix = np.zeros((w, w))  # will be filled with costs
@@ -102,7 +102,7 @@ if __name__ == '__main__':
                     # # iterate trough matching rows and calculate their costs
                     for left_col in range(half_k, w + half_k):
                         template = padded_left[row - half_k: row + half_k + 1, left_col - half_k: left_col + half_k + 1]
-                        costs = compare(image=strip, temp=template)
+                        costs = compare(image=strip, temp=template, cost_function=cost_function)
                         disparity_matrix[row - half_k, left_col - half_k] = abs(left_col - half_k - np.argmin(costs))
                         cost_matrix[left_col - half_k, :] = costs
 
@@ -120,7 +120,10 @@ if __name__ == '__main__':
                         if disparity_matrix[i, j] == -1:  # if occluded pixel, copy from left pixel
                             good_vals = disparity_matrix[i - filter_s:i + filter_s + 1, j - filter_s:j + filter_s + 1]
                             good_inds = np.where(good_vals != -1)
-                            disparity_matrix[i, j] = np.median(good_vals[good_inds])
+                            if good_inds[0].size > 0:
+                                disparity_matrix[i, j] = np.median(good_vals[good_inds])
+                            else:
+                                disparity_matrix[i, j] = 0
 
                 disparity_matrix[disparity_matrix == -1] = 0
 
@@ -130,7 +133,7 @@ if __name__ == '__main__':
                 gt = Image.open(path[2]).convert('LA')
                 gt_array = np.array(gt)
                 file_name = path[0].split('/')[2]
-                img_name = file_name + '_' + m + '_kernel' + str(k)
+                img_name = file_name + '_' + m + '_kernel' + str(k) +'.jpeg'
                 img.save('Q2_results/' + img_name, "JPEG")
 
                 avg_error, med_error, bad_05, bad_4 = calc_errors(disparity_matrix, gt_array)

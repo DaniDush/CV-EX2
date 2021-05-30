@@ -155,6 +155,13 @@ if __name__ == '__main__':
 
             plt.subplot(121), plt.imshow(img1)
             plt.subplot(122), plt.imshow(img2)
+            image_name = im[0].split('_')[1]
+            if n[0]:
+                image_name = image_name + 'normalized_8_point' + '.jpeg'
+            else:
+                image_name = image_name + 'regular_8_point' + '.jpeg'
+
+            img1.save('Q2_results/' + image_name, "JPEG")
             plt.show()
 
             # calc distances
