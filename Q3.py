@@ -46,8 +46,15 @@ def project_3D_to_2D(origin_img, img_3D, P):
 
     # result = np.zeros((origin_img.shape[0], origin_img.shape[1], 3))
     # will hold rgb values of the original x,y on the mapped X,Y coordinates. in the 4 dimension will hold depth
-    # result[x,y] = [r,g,b,depth] of
-    result = np.zeros((origin_img.shape[0], origin_img.shape[1], 4)) - 1
+    # result[x,y] = [r,g,b,depth]
+    # TODO: init result [x,y,3] to 1000
+    # result = np.zeros((origin_img.shape[0], origin_img.shape[1], 4)) - 1
+
+    result = np.zeros((h, w, 4))
+    result[:,:,3] = 1000
+    # print(result)
+
+    # too long!!!
     # TODO problem with 0,0
     for x in range(h):
         for y in range(w):
@@ -57,39 +64,64 @@ def project_3D_to_2D(origin_img, img_3D, P):
             new_x = int(np.round(new_x/new_z))
             new_y = int(np.round(new_y/new_z))
             # if we did not assign a value yet.
-            if result[new_x, new_y, 0] == -1:
-                result[new_x, new_y, :3], result[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
-            else:
-                # TODO is that that meaning of closer to the camera?
-                if result[new_x, new_y, 1] > depth[new_x, new_y]:
-                    result[new_x, new_y, :3], result[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
-            pass
 
-    print("Number of un-assigned indices: ", np.where(result == -1)[0].shape)
-    result[result == -1] = 0
-    print("finish projecting to 2D")
+            if depth[new_x, new_y] < result[new_x, new_y, 3]:
+                result[new_x, new_y, :3], result[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
+
     return result[:, :, :3]
 
 
+            # if result[new_x, new_y, 0] == -1:
+            #     result[new_x, new_y, :3], result[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
+            # else:
+            #     # TODO is that that meaning of closer to the camera?
+            #     if result[new_x, new_y, 1] > depth[new_x, new_y]:
+            #         result[new_x, new_y, :3], result[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
+            # pass
+
+    # print("Number of un-assigned indices: ", np.where(result == -1)[0].shape)
+    # result[result == -1] = 0
+    # print("finish projecting to 2D")
+    # return result[:, :, :3]
+
+
 if __name__ == '__main__':
+
+    # N = np.array(([1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]))
+    # print(N)
+    #
+    # frames =  np.zeros((10, 20, 4))
+    # frames = frames.flatten()
+    # frames[3::4] = -1
+    #
+    # frames = frames.reshape(200,4)
+    # frames = np.transpose(frames)
+    # #print(frames[:,0])
+    # walla = N@frames
+    # print(walla.shape)
+
+
+
     depth = sint.depth_read(depth1)
     # img = im.fromarray(depth)
     # print(depth.flatten())
     # M is the intrinsic matrix, N is the extrinsic matrix, so that
     M, _ = sint.cam_read(cam1)
-    N = np.array(([1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]))
+
     M_inv = np.linalg.inv(M)
     # reading image
     img_orig = cv2.imread(path1)
 
     h, w, _ = img_orig.shape
 
+
+
     img1_3D = reproject_to_3D(img_orig, M, depth)
-    N = np.array(([1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]))
+    N = np.array(([1, 0, 0, 100], [0, 1, 0, 0], [0, 0, 1, 0]))
     P = M@N
 
     new_image = project_3D_to_2D(img_orig, img1_3D, P)
-    # print(img1)
+    #print(img1)
     cv2.imshow('BGR Image', np.uint8(new_image))
     cv2.waitKey(0)
     cv2.destroyAllWindows()
