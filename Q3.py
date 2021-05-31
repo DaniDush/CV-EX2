@@ -44,16 +44,30 @@ def pixel_to_3D(K, pixel, depth):
 
 def project_3D_to_2D(origin_img, img_3D, P):
 
-    # return np.array([P@img1_3D[x,y] for x in range(img_3D.shape[0]) for y in range(img_3D.shape[1]) ])
-    # result = P @ img1_3D
-    result = np.zeros((origin_img.shape[0], origin_img.shape[1], 3))
-    for x in range(img_3D.shape[0]):
-        for y in range(img_3D.shape[1]):
-            result[x, y] = P @ img1_3D[x, y]
-            result[x, y, :2] = result[x, y,:2]/result[x, y, 2]
-            # TODO: depth check 
-    return result[:, :, :2]
+    # result = np.zeros((origin_img.shape[0], origin_img.shape[1], 3))
+    # temp will hold rgb values of the original x,y on the mapped X,Y coordinates. in the 4 dimension will hold depth
+    temp = np.zeros((origin_img.shape[0], origin_img.shape[1], 4)) - 1
+    # TODO problem with 0,0
+    for x in range(h):
+        for y in range(w):
+            new_x, new_y, new_z = P @ img1_3D[x, y]
+            # result[x, y] = P @ img1_3D[x, y]
+            # result[x, y, :2] = result[x, y, :2] / result[x, y, 2]
+            new_x = int(np.round(new_x/new_z))
+            new_y = int(np.round(new_y/new_z))
+            # if we did not assign a value yet.
+            if temp[new_x, new_y, 0] == -1:
+                temp[new_x, new_y, :3], temp[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
+            else:
+                # TODO is that that meaning of closer to the camera?
+                if temp[new_x, new_y, 1] > depth[new_x, new_y]:
+                    temp[new_x, new_y, :3], temp[new_x, new_y, 3] = origin_img[new_x, new_y, :], depth[new_x, new_y]
+            pass
 
+    print("Number of un-assigned indices: ", np.where(temp == -1)[0].shape)
+    temp[temp == -1] = 0
+    print("finish projecting to 2D")
+    return temp[:, :, :3]
 
 
 if __name__ == '__main__':
@@ -73,14 +87,10 @@ if __name__ == '__main__':
     N = np.array(([1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]))
     P = M@N
 
-    project_3D_to_2D(img_orig, img1_3D, P)
-
-
-
-
+    new_image = project_3D_to_2D(img_orig, img1_3D, P)
     # print(img1)
-    # cv2.imshow('BGR Image', img1)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow('BGR Image', np.uint8(new_image))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # img.show()
