@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 # import sintel_io as sint
 from data.Q3.useful_python_code import sintel_io as sint
-from PIL import Image as im
+from PIL import Image as im, Image
 
 cam1 = 'data/Q3/alley_2.cam'
 depth1 = 'data/Q3/alley_2.dpt'
@@ -44,7 +44,6 @@ def pixel_to_3D(K, pixel, depth):
 
 
 def project_3D_to_2D(origin_img, img_3D, P):
-
     result = np.zeros((h, w, 4))
     result[:, :, 3] = 1000
 
@@ -53,12 +52,9 @@ def project_3D_to_2D(origin_img, img_3D, P):
     for x in range(h):
         for y in range(w):
             new_x, new_y, new_z = P @ img1_3D[x, y]
-            # result[x, y] = P @ img1_3D[x, y]
-            # result[x, y, :2] = result[x, y, :2] / result[x, y, 2]
-            new_x = int(np.round(new_x/new_z))
-            new_y = int(np.round(new_y/new_z))
-            # # if we did not assign a value yet.
-            #
+            new_x = int(np.round(new_x / new_z))
+            new_y = int(np.round(new_y / new_z))
+            # print(new_x, new_y)
             if new_x >= h or new_y >= w or new_x <= -1 or new_y <= -1:
                 continue
 
@@ -69,8 +65,23 @@ def project_3D_to_2D(origin_img, img_3D, P):
     return result[:, :, :3]
 
 
-if __name__ == '__main__':
+# TODO - convert theta to radians
+def rotate_X_axis(theta):
+    theta = np.deg2rad(theta)
+    return np.array(([1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta), np.cos(theta)]))
 
+
+def rotate_Y_axis(theta):
+    theta = np.deg2rad(theta)
+    return np.array(([np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]))
+
+
+def rotate_Z_axis(theta):
+    theta = np.deg2rad(theta)
+    return np.array(([np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]))
+
+
+if __name__ == '__main__':
     depth = sint.depth_read(depth1)
     M, _ = sint.cam_read(cam1)
 
@@ -82,14 +93,17 @@ if __name__ == '__main__':
 
     img1_3D = reproject_to_3D(img_orig, M, depth)
 
-    # for i in range(20):
-    N = np.array(([1, 0, 0, 0.5], [0, 1, 0, 0], [0, 0, 1, 0]))
-    P = M@N
+    N = np.eye(3, 4)
+    # N[0, 3] = 0.05
+    for i in range(-10, 10):
+        N[:3, :3] = rotate_Y_axis(i/5)
+        P = M @ N
 
-    new_image = project_3D_to_2D(img_orig, img1_3D, P)
+        new_image = np.uint8(project_3D_to_2D(img_orig, img1_3D, P))
+        img = Image.fromarray(new_image).convert('RGB')
+        img.save('Q3_results/' + str(i) + '.jpeg', "JPEG")
 
-    cv2.imshow('BGR Image', np.uint8(new_image))
-    cv2.waitKey(0)
+        cv2.imshow('BGR Image', new_image)
+        cv2.waitKey(0)
+
     cv2.destroyAllWindows()
-
-    # img.show()

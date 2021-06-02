@@ -2,6 +2,8 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
+
 from utils import fundamental_matrix
 from tabulate import tabulate
 
@@ -113,6 +115,8 @@ if __name__ == '__main__':
                     [False, f'{CGREEN}\nEstimate using regular 8 point:{CEND}']]
     # SED-norm, Alg-norm, SED-regular, Alg-regular
     for im, p in zip(images, POINTS):
+        image_name = im[0].split('_')[1]
+        print(image_name)
         distances = []
         for n in to_normalize:
 
@@ -139,7 +143,7 @@ if __name__ == '__main__':
 
             # Compute fundamental matrix using 8 point (normalized or not)
             F = fundamental_matrix(pts_left, pts_right, normalize=n[0])
-            print(F)
+            # print(F)
 
             # activate fundamental matrix
             # left lines will be calculated using right image points and plotted on left image, vice versa
@@ -155,13 +159,13 @@ if __name__ == '__main__':
 
             plt.subplot(121), plt.imshow(img1)
             plt.subplot(122), plt.imshow(img2)
-            image_name = im[0].split('_')[1]
             if n[0]:
                 image_name = image_name + 'normalized_8_point' + '.jpeg'
             else:
                 image_name = image_name + 'regular_8_point' + '.jpeg'
 
-            img1.save('Q2_results/' + image_name, "JPEG")
+            img = Image.fromarray(img1)
+            img.save('Q1_results/' + image_name, "JPEG")
             plt.show()
 
             # calc distances
